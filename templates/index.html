@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRIC AI</title>
+    <style>
+        /* Import Google Font for the heading */
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap');
+
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px 20px 20px; /* Increased padding-top to 100px */
+            background-image: url('static/background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: #333;
+        }
+        h1 {
+            font-family: 'Poppins', sans-serif; /* Stylish font for the heading */
+            font-size: 48px; /* Increased font size */
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px; /* Added margin for spacing */
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        button {
+            font-size: 20px;
+            margin: 5px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.1);
+        }
+        #bat-bowl-choice {
+            display: none;
+            margin-top: 20px;
+            color: #ffffff;
+        }
+        #status, #result {
+            margin: 10px 0;
+            font-size: 18px;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .score-container {
+            background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
+            padding: 15px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        #score, #target {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            margin: 5px 0; /* Added margin for spacing */
+        }
+        .choice-boxes {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .choice-box {
+            padding: 20px;
+            border: 2px solid #007bff;
+            border-radius: 10px;
+            width: 100px;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: rgba(255, 255, 255, 0.8);
+            animation: fadeIn 0.5s ease;
+        }
+        .choice-label {
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .highlight {
+            font-weight: bold;
+            color: #007bff;
+            animation: highlight 1s ease;
+        }
+        @keyframes highlight {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .game-over {
+            font-size: 24px;
+            color: #ff0000;
+            animation: gameOver 1s ease infinite;
+        }
+        @keyframes gameOver {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <h1>CRIC AI</h1>
+    <p id="status">Toss: Choose Heads or Tails</p>
+    <button onclick="toss('heads')">Heads</button>
+    <button onclick="toss('tails')">Tails</button>
+
+    <div id="bat-bowl-choice">
+        <p>You won the toss! Choose to bat or bowl:</p>
+        <button onclick="choose('bat')">Bat</button>
+        <button onclick="choose('bowl')">Bowl</button>
+    </div>
+
+    <div class="buttons" style="display:none;">
+        <p id="turn-status"></p>
+        <button onclick="play(1)">1</button>
+        <button onclick="play(2)">2</button>
+        <button onclick="play(3)">3</button>
+        <button onclick="play(4)">4</button>
+        <button onclick="play(5)">5</button>
+        <button onclick="play(6)">6</button>
+    </div>
+
+    <p id="result"></p>
+    <div class="score-container">
+        <p id="score">Your Score: 0 | AI Score: 0</p>
+        <p id="target">Target: </p> <!-- Target included in the score container -->
+    </div>
+
+    <div class="choice-boxes">
+        <div>
+            <div class="choice-box" id="player-choice">-</div>
+            <div class="choice-label">YOUR CHOICE</div>
+        </div>
+        <div>
+            <div class="choice-box" id="ai-choice">-</div>
+            <div class="choice-label">AI's CHOICE</div>
+        </div>
+    </div>
+
+    <script>
+        function toss(choice) {
+            fetch('/toss', {
+                method: 'POST',
+                body: JSON.stringify({ choice: choice }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("status").innerText = `Toss result: ${data.toss_result}`;
+                
+                if (data.won_toss) {
+                    document.getElementById("bat-bowl-choice").style.display = "block";
+                } else {
+                    document.getElementById("status").innerText += `. AI chose you to ${data.ai_choice}.`;
+                    document.querySelector(".buttons").style.display = "block";
+                    updateTurnStatus();
+                }
+            });
+        }
+
+        function choose(choice) {
+            fetch('/choose', {
+                method: 'POST',
+                body: JSON.stringify({ choice: choice }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(() => {
+                document.getElementById("bat-bowl-choice").style.display = "none";
+                document.querySelector(".buttons").style.display = "block";
+                updateTurnStatus();
+            });
+        }
+
+        function play(playerChoice) {
+            fetch('/play', {
+                method: 'POST',
+                body: JSON.stringify({ player_choice: playerChoice }),
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("result").innerText = data.message;
+                document.getElementById("score").innerText = `Your Score: ${data.player_score} | AI Score: ${data.ai_score}`;
+                if (data.target) {
+                    document.getElementById("target").innerText = `Target: ${data.target}`;
+                }
+
+                // Update player and AI choices
+                document.getElementById("player-choice").textContent = playerChoice;
+                document.getElementById("ai-choice").textContent = data.ai_choice;
+
+                // Highlight the current turn
+                updateTurnStatus();
+
+                // Add game-over animation if the game is over
+                if (data.game_over) {
+                    document.getElementById("result").classList.add("game-over");
+                }
+            });
+        }
+
+        function updateTurnStatus() {
+            const turnStatus = document.getElementById("turn-status");
+            if (gameState.player_batting) {
+                turnStatus.innerHTML = `<span class="highlight">Your turn to bat!</span>`;
+            } else {
+                turnStatus.innerHTML = `<span class="highlight">Your turn to bowl!</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
